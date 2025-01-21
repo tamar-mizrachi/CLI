@@ -18,7 +18,8 @@ sortOption.AddAlias("-s");
 var authorOption = new Option<string>("--author", "name of own code");
 authorOption.AddAlias("-a");
 var removeEmptyLinesOption = new Option<bool>("--remove-empty-lines", "Remove empty lines from source code");
-removeEmptyLinesOption.AddAlias("r");
+removeEmptyLinesOption.AddAlias("-r");
+
 bundleCommand.AddOption(outputOption);
 bundleCommand.AddOption(languageOption);
 bundleCommand.AddOption(noteOption);
@@ -41,32 +42,45 @@ bundleCommand.SetHandler((output, language, note, sort, author, removeEmptyLines
             {
                 switch (language[i])
                 {
-                    case "java"or "Java":
-                        { 
-                            l.AddRange(fileNames.Where(x => x.EndsWith(".java"))); break;}
-                    case "c#"or "C#":
-                        { l.AddRange(fileNames.Where(x => x.EndsWith(".cs"))); break; }
-                    case "css"or "Css":
+                    case "java" or "Java":
                         {
-                            l.AddRange(fileNames.Where(x => x.EndsWith(".css")));
+                            l.AddRange(fileNames.Where(x => x.EndsWith(".java")).Where(f => !f.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase) &&
+                             !f.Contains("\\obj\\", StringComparison.OrdinalIgnoreCase))); break;
+                        }
+                    case "c#" or "C#":
+                        {
+                            l.AddRange(fileNames.Where(x => x.EndsWith(".cs"))
+                            .Where(f => !f.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase) &&
+                             !f.Contains("\\obj\\", StringComparison.OrdinalIgnoreCase)));
+                            break;
+                        }
+                    case "css" or "Css":
+                        {
+                            l.AddRange(fileNames.Where(x => x.EndsWith(".css"))
+                            .Where(f => !f.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase) &&
+                             !f.Contains("\\obj\\", StringComparison.OrdinalIgnoreCase)));
                             break;
                         }
 
-                    case "html"or "Html":
-                    {
-                            l.AddRange(fileNames.Where(x => x.EndsWith(".html")));
-                            break;
-                    }
-
-                    case "python"or "Python":
-                    {
-                            l.AddRange(fileNames.Where(x => x.EndsWith(".py")));
-                            break;
-                    }
-
-                    case "javascript"or"Javascript":
+                    case "html" or "Html":
                         {
-                            l.AddRange(fileNames.Where(x => x.EndsWith(".js")));
+                            l.AddRange(fileNames.Where(x => x.EndsWith(".html"))
+                                .Where(f => !f.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase) &&
+                             !f.Contains("\\obj\\", StringComparison.OrdinalIgnoreCase)));
+                            break;
+                        }
+
+                    case "python" or "Python":
+                        {
+                            l.AddRange(fileNames.Where(x => x.EndsWith(".py")).Where(f => !f.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase) &&
+                             !f.Contains("\\obj\\", StringComparison.OrdinalIgnoreCase)));
+                            break;
+                        }
+
+                    case "javascript" or "Javascript":
+                        {
+                            l.AddRange(fileNames.Where(x => x.EndsWith(".js")).Where(f => !f.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase) &&
+                             !f.Contains("\\obj\\", StringComparison.OrdinalIgnoreCase)));
                             break;
                         }
 
@@ -78,7 +92,6 @@ bundleCommand.SetHandler((output, language, note, sort, author, removeEmptyLines
                 };
             }
             fileNames = l;
-
         }
         if (sort == "abc") { fileNames = fileNames.OrderBy(x => x).ToList(); }
         if (sort == "language") { fileNames = fileNames.OrderBy(x => Path.GetExtension(x)).ToList(); }
@@ -87,27 +100,29 @@ bundleCommand.SetHandler((output, language, note, sort, author, removeEmptyLines
             Console.WriteLine("file was created with name: " + output.FullName);
             if (author != null)
             { file.WriteLine("author: " + author); }
-            string[] contiens;
-            for (int i = 0; i < fileNames.Count; i++)
+            foreach (var f in fileNames)
             {
                 if (note)
-                    file.WriteLine("file name: " + Path.GetFileName(fileNames[i]));
-                file.WriteLine("file path: " + fileNames[i]);
-                file.WriteLine("file content:");
-                contiens = File.ReadAllLines(fileNames[i]);
-                if (removeEmptyLines)
                 {
-                    contiens = contiens.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+                    file.WriteLine("//name file" + Path.GetFileName(f));
+                    file.WriteLine("//path file" + Path.GetFullPath(f));
+                    file.WriteLine();
                 }
-                file.WriteLine(string.Join("\n", contiens));
+                file.WriteLine(File.ReadAllText(f));
             }
         }
-
+        if (removeEmptyLines)
+        {
+            var lines = File.ReadAllLines(output.FullName);
+            var noEmptyLines = lines.Where(line => !string.IsNullOrWhiteSpace(line)).ToArray();
+            File.WriteAllLines(output.FullName, noEmptyLines);
+            Console.WriteLine("the empty file were deleted");
+        }
     }
     catch (Exception ex)
 
     {
-        Console.WriteLine("couldnt create the file");
+        Console.WriteLine("couldnt create the file:" + ex.Message);
     }
 
 }, outputOption, languageOption, noteOption, sortOption, authorOption, removeEmptyLinesOption);
@@ -118,17 +133,18 @@ createRspCommand.SetHandler(() =>
 {
     try
     {
-        var responseFile = new FileInfo("response.rsp");
         Console.WriteLine("enter values to  the bundle command");
         using (var file = File.CreateText("responseFile.rsp"))
         {
+            file.WriteLine("bundle");
             Console.WriteLine("output file path: ");
             var output1 = Console.ReadLine();
-            while (string.IsNullOrWhiteSpace(output1)){
+            while (string.IsNullOrWhiteSpace(output1))
+            {
                 Console.WriteLine("enter the output file path:");
                 output1 = Console.ReadLine();
             }
-            file.WriteLine("--output" + output1);
+            file.WriteLine("--output " + output1);
             Console.Write("enter the language :");
             Console.Write("languages(comma-separated) :");
             var languages = Console.ReadLine();
@@ -137,7 +153,7 @@ createRspCommand.SetHandler(() =>
                 Console.WriteLine("enter at least one programming language:");
                 languages = Console.ReadLine();
             }
-            file.WriteLine("--language" + languages);
+            file.WriteLine("--language " + languages);
             Console.Write("include notes?(y/n):");
             var note = Console.ReadLine();
             while (string.IsNullOrWhiteSpace(note) || (note != "y" && note != "n"))
@@ -154,7 +170,7 @@ createRspCommand.SetHandler(() =>
                 Console.WriteLine("enter 'abc' or 'language':");
                 sort = Console.ReadLine();
             }
-            file.WriteLine("--sort" + sort);
+            file.WriteLine("--sort " + sort);
             Console.WriteLine("remove empty lines?(y/n):");
             var remove = Console.ReadLine();
             while (string.IsNullOrWhiteSpace(remove) || (remove != "y" && remove != "n"))
@@ -163,14 +179,14 @@ createRspCommand.SetHandler(() =>
                 remove = Console.ReadLine();
             }
             if (remove == "y")
-                file.WriteLine("--remove-empty-lines" + remove);
+                file.WriteLine("--remove-empty-lines");
             Console.Write("enter name of author:");
             var author = Console.ReadLine();
-            while (!string.IsNullOrWhiteSpace(author))
+            while (string.IsNullOrWhiteSpace(author))
             {
-                file.WriteLine("--author" + author);
+                file.WriteLine("--author " + author);
             }
-            Console.WriteLine("response file was created good:" + responseFile.FullName);
+            Console.WriteLine("response file was created good");
         }
     }
     catch (Exception ex)
